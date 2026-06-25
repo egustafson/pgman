@@ -6,3 +6,7 @@ This folder contains design notes for this project.  Among the notes there are t
 * `planXXX.md` are plan documents, often written by an AI agent, that outline the steps to accomplish a task.
 
 Other documents, both human and AI generated may be found in this folder.
+
+## Attic
+
+The `attic/` subdirectory holds documents that have been superseded or are no longer actively needed. Files are moved here rather than deleted, preserving history while keeping the main folder uncluttered.

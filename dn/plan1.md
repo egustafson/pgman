@@ -66,7 +66,7 @@ pgman/
 ```yaml
 host: localhost          # PGMAN_HOST
 port: 5432               # PGMAN_PORT
-user: <current-user>     # PGMAN_USER
+username: <current-user>  # PGMAN_USERNAME
 password: ""             # PGMAN_PASSWORD
 dbname: postgres         # PGMAN_DBNAME
 ```
@@ -75,27 +75,58 @@ dbname: postgres         # PGMAN_DBNAME
 
 | Variable | Default | Description |
 |---|---|---|
+| `PGMAN_CONFIG` | *(none)* | Path to a config file; equivalent to `-c`/`--config` |
 | `PGMAN_HOST` | `localhost` | PostgreSQL server hostname |
 | `PGMAN_PORT` | `5432` | PostgreSQL server port |
-| `PGMAN_USER` | current OS user | PostgreSQL username |
+| `PGMAN_USERNAME` | current OS user | PostgreSQL username |
 | `PGMAN_PASSWORD` | *(empty)* | PostgreSQL password |
 | `PGMAN_DBNAME` | `postgres` | Default database name |
 
-### 2.4 `--config` / `-c` Flag
+### 2.4 Common Global Flags
 
-- When provided, the specified file is loaded directly; the default location search is skipped entirely.
-- This is a global flag on the root `cli` group, passed via Click context.
+All connection parameters and the config path are exposed as global CLI flags on the root `pgman` group. They appear between the program name and the subcommand and apply to every command:
 
-### 2.5 Environment Variable Interpolation in Config Files
+```
+pgman [GLOBAL FLAGS] <command> [COMMAND FLAGS]
+```
+
+**Full mapping — config key ↔ env variable ↔ CLI flag:**
+
+| Config Key | Env Variable | CLI Flag | Short | Default |
+|---|---|---|---|---|
+| *(n/a — not in config file)* | `PGMAN_CONFIG` | `--config` | `-c` | *(none)* |
+| `host` | `PGMAN_HOST` | `--host` | `-h` | `localhost` |
+| `port` | `PGMAN_PORT` | `--port` | `-P` | `5432` |
+| `username` | `PGMAN_USERNAME` | `--username` | `-u` | current OS user |
+| `password` | `PGMAN_PASSWORD` | `--password` | `-p` | *(empty)* |
+| `dbname` | `PGMAN_DBNAME` | `--dbname` | `-d` | `postgres` |
+
+**Notes:**
+- `--config` is not a config-file key (that would be circular); it is only available as a CLI flag and via `PGMAN_CONFIG`.
+- `--username` / `-u` maps to config key `username` and `PGMAN_USERNAME`.
+- `-P` (uppercase) for `--port` avoids collision with `-p`/`--password`.
+- `PGMAN_CONFIG` is evaluated before any config file is searched; if set, it behaves identically to passing `-c`/`--config`.
+
+### 2.5 Extensibility — Adding New Common Parameters
+
+When a new configuration parameter is introduced that is common across all (or most) commands, the following three things must be created together:
+
+1. **Config file key** — added to the supported YAML schema.
+2. **`PGMAN_*` environment variable** — following the existing naming convention.
+3. **Global CLI flag** — added to the root `cli` group with a short form where a non-conflicting single character is available.
+
+The mapping table in §2.4 is the canonical reference; it must be updated whenever a new common parameter is introduced. This keeps config, env, and CLI surfaces consistent by design rather than by convention.
+
+### 2.6 Environment Variable Interpolation in Config Files
 
 - Config file values may reference environment variables using `${VAR_NAME}` syntax.
 - Documentation and examples should use `PGMAN_*` variable names for interpolation.
 
-### 2.6 XDG Support
+### 2.7 XDG Support
 
 - Respect `XDG_CONFIG_HOME` when set; fall back to `~/.config`.
 
-### 2.7 `config.py` Responsibilities
+### 2.8 `config.py` Responsibilities
 
 - Search default locations in order and load the **first** file found (stop after first match).
 - If `-c`/`--config` is provided, load that file directly instead of searching.
@@ -111,8 +142,14 @@ dbname: postgres         # PGMAN_DBNAME
 ### 3.1 Root Group (`cli.py`)
 
 - Click group named `pgman`.
-- Global options: `-c`/`--config` (path to config file).
-- Loads configuration once and stores in Click context (`ctx.obj`).
+- Carries all common global options (see §2.4); they appear before the subcommand:
+  - `-c` / `--config` — path to config file (also `PGMAN_CONFIG`)
+  - `-h` / `--host` — PostgreSQL hostname
+  - `-P` / `--port` — PostgreSQL port
+  - `-u` / `--username` — PostgreSQL username
+  - `-p` / `--password` — PostgreSQL password
+  - `-d` / `--dbname` — database name
+- Configuration is resolved once (defaults → file → env → CLI flags) and stored in `ctx.obj` so all subcommands share the same merged config without re-parsing.
 - Subcommands registered: `about`, `ping`.
 
 ---
@@ -136,7 +173,7 @@ config_files_failed: []
 environment_variables:
   PGMAN_HOST: localhost
   PGMAN_PORT: "5432"
-  PGMAN_USER: ericg
+  PGMAN_USERNAME: ericg
   PGMAN_PASSWORD: "**REDACTED**"
   PGMAN_DBNAME: postgres
 ```
@@ -145,7 +182,7 @@ environment_variables:
 ```yaml
 host: localhost
 port: 5432
-user: ericg
+username: ericg
 password: "**REDACTED**"
 dbname: postgres
 ```
@@ -167,33 +204,31 @@ dbname: postgres
 
 - Attempts a connection to PostgreSQL using resolved configuration.
 - Reports success or failure with meaningful error context (auth failure, network error, etc.).
-- Displays connection details used (host, port, dbname, user) — password redacted.
+- Displays connection details used (host, port, dbname, username) — password redacted.
 
-### 5.2 Optional Flags
+### 5.2 Flags
 
-| Flag | Description |
-|---|---|
-| `-d`, `--dbname` | Override the database name for this connection attempt |
+`ping` has no command-specific flags. All connection parameters (`-h`/`--host`, `-P`/`--port`, `-u`/`--username`, `-p`/`--password`, `-d`/`--dbname`) are available as global flags on the root group (see §2.4) and are already reflected in the effective configuration passed via `ctx.obj`.
 
 ### 5.3 Output (success)
 
 ```
 Connected to PostgreSQL successfully.
-  host:   localhost
-  port:   5432
-  dbname: postgres
-  user:   ericg
+  host:     localhost
+  port:     5432
+  dbname:   postgres
+  username: ericg
 ```
 
 ### 5.4 Output (failure)
 
 ```
 Failed to connect to PostgreSQL.
-  host:   localhost
-  port:   5432
-  dbname: postgres
-  user:   ericg
-  error:  <error message>
+  host:     localhost
+  port:     5432
+  dbname:   postgres
+  username: ericg
+  error:    <error message>
 ```
 
 - Exit with non-zero status on failure.
@@ -202,7 +237,7 @@ Failed to connect to PostgreSQL.
 
 - Use `psycopg2.connect(...)` wrapped in try/except.
 - Close connection immediately after successful connect (this is a ping, not a persistent session).
-- Flag naming aligned with `psql` conventions (`-d`/`--dbname`).
+- Connection parameters come entirely from `ctx.obj` (the merged effective config); no connection flags are parsed by `ping` itself.
 
 ---
 
@@ -255,9 +290,10 @@ Steps:
 
 | Module | Tests |
 |---|---|
-| `config.py` | Default values, first-file-wins search, env var override, precedence order, redaction, XDG support, `--config` flag bypass, interpolation |
-| `about` command | Output parses as valid YAML, two documents, redacted password, no-config baseline; `--quiet` emits only name/version/build_date |
-| `ping` command | Success path (mock psycopg2), failure paths (auth, network), `--dbname` override, non-zero exit on failure |
+| `config.py` | Default values, first-file-wins search, env var override, precedence order, redaction, XDG support, `--config`/`PGMAN_CONFIG` bypass, interpolation |
+| `cli.py` (root group) | Each common global flag overrides the corresponding config/env value; `-P`/`--port` is an integer; unknown flags are rejected |
+| `about` command | Output parses as valid YAML, two documents, redacted password, no-config baseline; `--quiet` emits only name/version/build_date; global flags appear in effective config output |
+| `ping` command | Success path (mock psycopg2), failure paths (auth, network), global flag overrides applied to connection, non-zero exit on failure |
 
 ### 8.2 Test Tooling
 
