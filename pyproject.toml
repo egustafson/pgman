@@ -42,5 +42,8 @@ addopts = "-v"
 line-length = 100
 src = ["src"]
 
+[tool.ruff.format]
+exclude = ["src/pgman/_version.py"]
+
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP"]
