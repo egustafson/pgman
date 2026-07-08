@@ -67,6 +67,46 @@ pgman ping
 pgman -h db.example.com -u myuser ping
 ```
 
+### `pgman newdb`
+
+Creates a database intended for a single application, owned by a dedicated **non-superuser**
+role. By default the owner is `<dbname>_owner` with a generated password, and the database
+uses `UTF8` encoding and `en_US.UTF-8` collation. These commands are typically run as a
+superuser (e.g. `postgres`) or a `CREATEDB`/`CREATEROLE`-capable role.
+
+```sh
+pgman newdb myapp
+# → owner "myapp_owner" created with a random password (shown once)
+
+pgman newdb myapp --dbowner appuser --dbpassword s3cret
+```
+
+> **Note:** the generated password is displayed only once, in the command output. Capture it
+> immediately.
+
+### `pgman dropdb`
+
+Drops a database after asking you to re-type its name for confirmation. By default it also
+drops the database's owner role; use `--keep-owner` to retain it. Shared or unresolvable roles
+(e.g. `postgres`) are never dropped.
+
+```sh
+pgman dropdb myapp                        # prompts for confirmation
+pgman dropdb myapp --keep-owner           # keep the owner role
+pgman dropdb myapp --i-really-really-mean-it  # skip the prompt
+```
+
+### `pgman listdbs`
+
+Lists non-template databases. Add `--with-owners` to include each database's owner, and
+`--json` for machine-readable output.
+
+```sh
+pgman listdbs
+pgman listdbs --with-owners
+pgman listdbs --json --with-owners
+```
+
 ---
 
 ## Configuration

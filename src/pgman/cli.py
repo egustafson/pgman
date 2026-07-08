@@ -3,6 +3,9 @@
 import click
 
 from pgman.commands.about import about
+from pgman.commands.dropdb import dropdb
+from pgman.commands.listdbs import listdbs
+from pgman.commands.newdb import newdb
 from pgman.commands.ping import ping
 from pgman.config import load_config
 
@@ -52,3 +55,6 @@ def cli(ctx, config_path, host, port, username, password, dbname):
 
 cli.add_command(about)
 cli.add_command(ping)
+cli.add_command(newdb)
+cli.add_command(dropdb)
+cli.add_command(listdbs)

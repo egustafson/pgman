@@ -12,3 +12,14 @@ def get_connection(config: dict):
         user=config["username"],
         password=config["password"],
     )
+
+
+def get_admin_connection(config: dict):
+    """Create and return an autocommit psycopg2 connection using *config*.
+
+    ``CREATE DATABASE`` and ``DROP DATABASE`` cannot run inside a transaction
+    block, so administrative commands require autocommit.
+    """
+    conn = get_connection(config)
+    conn.autocommit = True
+    return conn
