@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-07-07
+
 ### Added
 
 - `pgman newdb <dbname>` command: creates a database owned by a dedicated, non-superuser
@@ -23,7 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   machine-readable output and `--with-owners` to resolve each database's owner via
   `pg_database.datdba` → `pg_roles` (reported as `unknown` when unresolvable).
 
-
+[0.2.0]: https://github.com/egustafson/pgman/releases/tag/v0.2.0
 ## [0.1.0] - 2026-07-06
 
 ### Added
